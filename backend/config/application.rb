@@ -11,7 +11,7 @@ Bundler.require(*Rails.groups)
 
 module TodoApi
   class Application < Rails::Application
-    config.load_defaults 8.0
+    config.load_defaults 8.1
     config.autoload_lib(ignore: %w[assets tasks])
 
     # API-only: no views, cookies, sessions or asset pipeline.

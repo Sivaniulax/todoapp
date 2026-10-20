@@ -92,6 +92,7 @@ Needs Ruby 3.2+, Rails 8, Node 20.19+ and PostgreSQL running locally.
 cd backend
 bundle install
 $env:DB_PASSWORD = "your-postgres-password"   # DB_USERNAME defaults to "postgres"
+$env:DB_PORT = "5433"                         # only if Postgres is not on 5432 (PGPORT is also respected)
 ruby bin/rails db:prepare                     # create + migrate + seed
 ruby bin/rails server                         # http://localhost:3000
 ```
@@ -101,8 +102,9 @@ To make an admin locally, set `$env:ADMIN_EMAIL` and `$env:ADMIN_PASSWORD` and r
 
 Run tests: `bundle exec rspec` · lint: `bundle exec rubocop` · security: `bundle exec brakeman`
 
-> First time: after `db:prepare`, commit the generated `backend/db/schema.rb` and `backend/Gemfile.lock`.
-> Also run `bundle lock --add-platform x86_64-linux` once so Render and CI can use the lockfile.
+> On PostgreSQL 18, `db:prepare` can abort with "server closed the connection unexpectedly" when the
+> database does not exist yet — run `ruby bin/rails db:create` first, then `db:migrate` and `db:seed`.
+> If `localhost` resolves to IPv6 and Postgres only listens on IPv4, set `$env:DB_HOST = "127.0.0.1"`.
 
 **Frontend** (terminal 2)
 
