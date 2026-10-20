@@ -1,0 +1,28 @@
+source "https://rubygems.org"
+
+gem "rails", "~> 8.0.3"
+gem "pg", "~> 1.5"
+gem "puma", ">= 6.0"
+gem "bootsnap", require: false
+
+# Auth
+gem "bcrypt", "~> 3.1.7" # has_secure_password
+gem "jwt", "~> 2.10"     # JSON Web Tokens
+
+# Let the React app (different origin) call the API
+gem "rack-cors"
+
+# Windows does not include zoneinfo files
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+group :development, :test do
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+  gem "brakeman", require: false
+  gem "rubocop-rails-omakase", require: false
+  gem "rspec-rails", "~> 8.0"
+  gem "factory_bot_rails"
+end
+
+group :test do
+  gem "shoulda-matchers", "~> 6.0"
+end

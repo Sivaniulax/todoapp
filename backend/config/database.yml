@@ -1,0 +1,20 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("DB_HOST", "localhost") %>
+  username: <%= ENV.fetch("DB_USERNAME", "postgres") %>
+  password: <%= ENV["DB_PASSWORD"] %>
+
+development:
+  <<: *default
+  database: todoapp_development
+
+test:
+  <<: *default
+  database: todoapp_test
+
+# On Render, DATABASE_URL is injected from the managed Postgres database.
+production:
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>

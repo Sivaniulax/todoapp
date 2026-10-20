@@ -1,0 +1,33 @@
+# Render Blueprint: Dashboard -> New -> Blueprint -> pick this repo.
+databases:
+  - name: todoapp-db
+    plan: free
+    databaseName: todoapp_production
+    user: todoapp
+
+services:
+  - type: web
+    name: todoapp-api
+    runtime: ruby
+    plan: free
+    rootDir: backend
+    buildCommand: ./bin/render-build.sh
+    startCommand: bundle exec puma -C config/puma.rb
+    healthCheckPath: /up
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: todoapp-db
+          property: connectionString
+      - key: SECRET_KEY_BASE
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RAILS_ENV
+        value: production
+      - key: FRONTEND_ORIGINS # your Vercel URL, e.g. https://todoapp.vercel.app
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
