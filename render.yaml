@@ -21,8 +21,6 @@ services:
           property: connectionString
       - key: SECRET_KEY_BASE
         generateValue: true
-      - key: JWT_SECRET
-        generateValue: true
       - key: RAILS_ENV
         value: production
       - key: FRONTEND_ORIGINS # your Vercel URL, e.g. https://todoapp.vercel.app
@@ -30,4 +28,21 @@ services:
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
+        sync: false
+      # Solid Queue runs inside Puma on this one service. Set to "false" and
+      # add a worker service if jobs ever outgrow the web dyno.
+      - key: SOLID_QUEUE_IN_PUMA
+        value: "true"
+      # Mail is skipped entirely unless MAIL_SMTP_ADDRESS is set.
+      - key: APP_HOST
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_SMTP_ADDRESS
+        sync: false
+      - key: MAIL_SMTP_PORT
+        sync: false
+      - key: MAIL_SMTP_USERNAME
+        sync: false
+      - key: MAIL_SMTP_PASSWORD
         sync: false

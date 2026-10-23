@@ -1,19 +1,23 @@
-# Custom exceptions that map straight to HTTP statuses.
-# Raise them anywhere in a request and ErrorHandling renders the JSON.
+# Exceptions that map straight to an HTTP status. Raise one anywhere in a
+# request and ErrorHandling renders it. Default messages are in en.yml.
 class ApiError < StandardError
+  def initialize(message = nil)
+    super(message || I18n.t("api.errors.server_error"))
+  end
+
   def status = :internal_server_error
 
   class Unauthorized < ApiError
-    def initialize(message = "You need to log in")
-      super
+    def initialize(message = nil)
+      super(message || I18n.t("api.errors.unauthorized"))
     end
 
     def status = :unauthorized
   end
 
   class Forbidden < ApiError
-    def initialize(message = "You are not allowed to do that")
-      super
+    def initialize(message = nil)
+      super(message || I18n.t("api.errors.forbidden"))
     end
 
     def status = :forbidden

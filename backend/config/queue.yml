@@ -1,0 +1,22 @@
+# Solid Queue runs inside Puma (see config/puma.rb), so the free Render
+# plan needs only the one web service. Set SOLID_QUEUE_IN_PUMA=false and
+# run `bin/jobs` if you ever want a dedicated worker process.
+default: &default
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+      recurring_tasks: true
+  workers:
+    - queues: "*"
+      threads: 3
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 1
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

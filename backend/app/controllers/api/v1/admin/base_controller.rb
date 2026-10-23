@@ -1,9 +1,9 @@
 module Api
   module V1
     module Admin
-      # Every controller under /api/v1/admin inherits the admin-only rule.
+      # Admin controllers authorize against their own policy; this only
+      # groups them under one parent.
       class BaseController < ApplicationController
-        require_role :admin
       end
     end
   end

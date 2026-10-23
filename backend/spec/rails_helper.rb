@@ -4,6 +4,10 @@ require_relative "../config/environment"
 abort("The Rails environment is running in production mode!") if Rails.env.production?
 require "rspec/rails"
 
+# Devise's :user mapping is created by devise_for in routes.rb, and routes
+# only load on the first request. sign_in needs the mapping before that.
+Rails.application.reload_routes_unless_loaded
+
 Rails.root.glob("spec/support/**/*.rb").sort_by(&:to_s).each { |f| require f }
 
 begin
@@ -21,6 +25,7 @@ RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
   config.include ActiveSupport::Testing::TimeHelpers
   config.include RequestHelpers, type: :request
+  config.include Devise::Test::IntegrationHelpers, type: :request
 end
 
 Shoulda::Matchers.configure do |config|

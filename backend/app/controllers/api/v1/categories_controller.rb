@@ -1,25 +1,26 @@
 module Api
   module V1
     class CategoriesController < ApplicationController
-      # Guests can list (they'll get an empty array) but not manage categories.
-      require_role :member, :admin, except: :index
       before_action :set_category, only: %i[update destroy]
 
       # GET /api/v1/categories
+      # Guests are allowed here and simply get an empty list.
       def index
-        render json: { categories: CategorySerializer.many(current_user.categories.alphabetical) }
+        authorize Category, :index?
+        render json: { categories: CategoryResource.new(policy_scope(Category).alphabetical).serializable_hash }
       end
 
       # POST /api/v1/categories
       def create
+        authorize Category, :create?
         category = current_user.categories.create!(category_params)
-        render json: { category: CategorySerializer.new(category).as_json }, status: :created
+        render json: { category: CategoryResource.new(category).serializable_hash }, status: :created
       end
 
       # PATCH /api/v1/categories/:id
       def update
         @category.update!(category_params)
-        render json: { category: CategorySerializer.new(@category).as_json }
+        render json: { category: CategoryResource.new(@category).serializable_hash }
       end
 
       # DELETE /api/v1/categories/:id   (todos keep existing, without a category)
@@ -31,11 +32,14 @@ module Api
       private
 
       def set_category
-        @category = current_user.categories.find(params[:id])
+        @category = policy_scope(Category).find(params[:id])
+        authorize @category
       end
 
+      # The double array is how params.expect spells "a list of hashes".
       def category_params
-        params.expect(category: %i[name color])
+        params.expect(category: [ :name, :color,
+                                  { todos_attributes: [ %i[title description due_date priority] ] } ])
       end
     end
   end

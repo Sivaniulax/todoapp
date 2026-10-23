@@ -24,6 +24,17 @@ if demo.todos.none?
     { title: "Buy groceries", priority: :low, category: home, completed: true },
     { title: "Read about React hooks", description: "useState, useEffect, useReducer, custom hooks" }
   ])
+
+  # Tags are created on demand through the Taggable concern.
+  demo.todos.find_by(title: "Learn ActiveRecord scopes")&.update!(tag_names: %w[learning rails])
+  demo.todos.find_by(title: "Deploy to Render")&.update!(tag_names: %w[ops urgent])
+  demo.todos.find_by(title: "Write request specs")&.update!(tag_names: %w[rails])
+
+  # One todo in the trash, so GET /api/v1/todos/trash has something to show.
+  demo.todos.create!(title: "An idea I abandoned", priority: :low).trash!
+
+  # Something due today, so DailyDigestJob has work to do.
+  demo.todos.create!(title: "Send the daily digest", priority: :medium, due_date: Date.current)
 end
 
 puts "Demo user: demo@todoapp.dev / password123"

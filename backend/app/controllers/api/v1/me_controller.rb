@@ -3,7 +3,8 @@ module Api
     class MeController < ApplicationController
       # GET /api/v1/me
       def show
-        render json: { user: UserSerializer.new(current_user).as_json }
+        authorize current_user, :show?
+        render json: { user: UserResource.new(current_user).serializable_hash }
       end
     end
   end

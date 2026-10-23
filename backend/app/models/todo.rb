@@ -1,10 +1,16 @@
 class Todo < ApplicationRecord
+  include Trashable
+  include Taggable
+
   belongs_to :user, counter_cache: true
   belongs_to :category, optional: true, counter_cache: true
 
   enum :priority, { low: 0, medium: 1, high: 2 }, default: :medium, validate: true
 
   normalizes :title, with: ->(title) { title.squish }
+
+  # A todo built through Category's nested attributes has no user of its own yet.
+  before_validation :inherit_user_from_category
 
   validates :title, presence: true, length: { maximum: 120 }
   validates :description, length: { maximum: 1_000 }
@@ -13,7 +19,6 @@ class Todo < ApplicationRecord
 
   before_save :sync_completed_at
 
-  # ---- Scopes: small, chainable query building blocks ----
   scope :completed, -> { where(completed: true) }
   scope :pending, -> { where(completed: false) }
   scope :overdue, -> { pending.where(due_date: ...Date.current) }
@@ -33,6 +38,10 @@ class Todo < ApplicationRecord
 
   private
 
+  def inherit_user_from_category
+    self.user ||= category&.user
+  end
+
   def sync_completed_at
     return unless will_save_change_to_completed?
 
@@ -42,13 +51,13 @@ class Todo < ApplicationRecord
   def category_must_belong_to_user
     return if category.nil? || category.user_id == user_id
 
-    errors.add(:category, "must be one of your categories")
+    errors.add(:category, :not_your_category)
   end
 
   def guest_todo_limit
     return unless user&.guest?
-    return if user.todos.count < user.todo_limit
+    return if user.todos.kept.count < user.todo_limit
 
-    errors.add(:base, "Guests can only create #{user.todo_limit} todos. Create an account to add more.")
+    errors.add(:base, :guest_todo_limit, limit: user.todo_limit)
   end
 end

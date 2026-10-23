@@ -1,0 +1,20 @@
+# Cron-style schedules, run by the Solid Queue dispatcher.
+default: &default
+  cleanup_expired_guests:
+    class: CleanupExpiredGuestsJob
+    schedule: every day at 3am
+  purge_unused_tags:
+    class: PurgeUnusedTagsJob
+    schedule: every sunday at 4am
+  daily_digest:
+    class: DailyDigestJob
+    schedule: every day at 7am
+
+development:
+  <<: *default
+
+production:
+  <<: *default
+  clear_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour at minute 12

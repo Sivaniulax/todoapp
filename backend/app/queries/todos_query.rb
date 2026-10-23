@@ -1,5 +1,4 @@
-# Query object: turns request params into a chain of scopes.
-# Keeps the controller thin and is easy to unit test.
+# Turns request params into a chain of scopes, so the controller stays thin:
 #
 #   TodosQuery.new(user.todos, status: "pending", q: "milk", sort: "due_date").call
 class TodosQuery
@@ -17,7 +16,6 @@ class TodosQuery
     @params = params.to_h.symbolize_keys
   end
 
-  # Filtered + sorted relation.
   def call
     by_status(filtered, params[:status]).reorder(sort_order)
   end
@@ -43,6 +41,7 @@ class TodosQuery
     relation = relation.search(params[:q].strip) if params[:q].present?
     relation = relation.where(priority: params[:priority]) if Todo.priorities.key?(params[:priority])
     relation = relation.where(category_id: params[:category_id]) if params[:category_id].present?
+    relation = relation.joins(:tags).where(tags: { name: params[:tag].to_s.downcase }) if params[:tag].present?
     relation
   end
 

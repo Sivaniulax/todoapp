@@ -1,6 +1,5 @@
-# Offset pagination without a gem.
+# Offset pagination, no gem needed.
 #   records, meta = paginate(Todo.all)
-#   meta => { page: 2, per_page: 10, total_count: 42, total_pages: 5 }
 module Pagination
   extend ActiveSupport::Concern
 

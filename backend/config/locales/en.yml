@@ -1,0 +1,43 @@
+en:
+  # Final fallback for every model, so the validator works on AR and ActiveModel alike.
+  errors:
+    messages:
+      invalid_hex_color: "must be a hex color like #6366f1"
+
+  activerecord:
+    errors:
+      models:
+        todo:
+          attributes:
+            category:
+              not_your_category: "must be one of your categories"
+            base:
+              guest_todo_limit: "Guests can only create %{limit} todos. Create an account to add more."
+
+  # Messages the API renders directly, kept out of the Ruby source.
+  api:
+    errors:
+      unauthorized: "You need to log in"
+      forbidden: "You are not allowed to do that"
+      server_error: "Something went wrong"
+      not_found: "%{model} not found"
+      validation_failed: "Validation failed"
+      stale_object: "This todo was changed by someone else. Reload it and try again."
+      account_not_found: "Account not found"
+      guest_session_expired: "Your guest session has expired"
+      session_expired: "Your session has expired, please log in again"
+      invalid_token: "Invalid token"
+      invalid_credentials: "Invalid email or password"
+      missing_role: "This action requires one of these roles: %{roles}"
+      too_many_attempts: "Too many attempts. Try again in a few minutes."
+      guests_cannot_upgrade: "Only guest accounts can be upgraded"
+
+  mailers:
+    user_mailer:
+      welcome:
+        subject: "Welcome to TodoApp, %{name}"
+    todo_mailer:
+      daily_digest:
+        subject:
+          one: "You have 1 todo due today"
+          other: "You have %{count} todos due today"

@@ -6,13 +6,15 @@ RSpec.describe "Auth API" do
   end
 
   describe "POST /api/v1/auth/signup" do
-    it "creates a member and returns a token" do
+    it "creates a member and signs them in" do
       post "/api/v1/auth/signup", params: signup_params, as: :json
 
       expect(response).to have_http_status(:created)
-      expect(json["token"]).to be_present
       expect(json["user"]).to include("email" => "sivani@example.com", "role" => "member")
-      expect(json["user"]).not_to have_key("password_digest")
+      expect(json["user"]).not_to have_key("encrypted_password")
+
+      get "/api/v1/me"
+      expect(response).to have_http_status(:ok)
     end
 
     it "ignores a role sent by the client" do
@@ -50,6 +52,28 @@ RSpec.describe "Auth API" do
       expect(response).to have_http_status(:unauthorized)
       expect(json["error"]).to eq("Invalid email or password")
     end
+
+    it "refuses to log a guest in through the password form" do
+      guest = create(:user, :guest)
+      guest.update!(password: "password123")
+
+      post "/api/v1/auth/login", params: { email: guest.email, password: "password123" }, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "DELETE /api/v1/auth/logout" do
+    it "ends the session" do
+      user = create(:user)
+      sign_in user
+
+      delete "/api/v1/auth/logout"
+      expect(response).to have_http_status(:no_content)
+
+      get "/api/v1/me"
+      expect(response).to have_http_status(:unauthorized)
+    end
   end
 
   describe "POST /api/v1/auth/guest" do
@@ -65,17 +89,23 @@ RSpec.describe "Auth API" do
   end
 
   describe "POST /api/v1/auth/upgrade" do
-    it "upgrades a guest to a member" do
+    it "upgrades a guest to a member and keeps them signed in" do
       guest = create(:user, :guest)
-      post "/api/v1/auth/upgrade", params: signup_params, headers: auth_headers(guest), as: :json
+      sign_in guest
+
+      post "/api/v1/auth/upgrade", params: signup_params, as: :json
 
       expect(response).to have_http_status(:ok)
       expect(json.dig("user", "role")).to eq("member")
       expect(guest.reload).to be_member
+
+      get "/api/v1/me"
+      expect(response).to have_http_status(:ok)
     end
 
     it "is forbidden for members" do
-      post "/api/v1/auth/upgrade", params: signup_params, headers: auth_headers(create(:user)), as: :json
+      sign_in create(:user)
+      post "/api/v1/auth/upgrade", params: signup_params, as: :json
       expect(response).to have_http_status(:forbidden)
     end
   end
@@ -83,26 +113,23 @@ RSpec.describe "Auth API" do
   describe "GET /api/v1/me" do
     it "returns the current user" do
       user = create(:user)
-      get "/api/v1/me", headers: auth_headers(user)
+      sign_in user
+
+      get "/api/v1/me"
       expect(json.dig("user", "id")).to eq(user.id)
     end
 
-    it "requires a token" do
+    it "requires a session" do
       get "/api/v1/me"
-      expect(response).to have_http_status(:unauthorized)
-    end
-
-    it "rejects a garbage token" do
-      get "/api/v1/me", headers: { "Authorization" => "Bearer nope" }
       expect(response).to have_http_status(:unauthorized)
     end
 
     it "rejects an expired guest" do
       guest = create(:user, :guest)
-      headers = auth_headers(guest)
+      sign_in guest
       guest.update!(guest_expires_at: 1.minute.ago)
 
-      get "/api/v1/me", headers: headers
+      get "/api/v1/me"
       expect(response).to have_http_status(:unauthorized)
     end
   end

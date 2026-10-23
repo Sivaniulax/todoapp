@@ -1,0 +1,9 @@
+Hi <%= @user.name %>,
+
+<%= pluralize(@todos.size, "todo") %> due today:
+
+<% @todos.each do |todo| -%>
+* [<%= todo.priority %>] <%= todo.title %><%= " (#{todo.category.name})" if todo.category %>
+<% end -%>
+
+Open your todos: <%= frontend_url %>

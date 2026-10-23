@@ -1,6 +1,5 @@
-# Background job: removes guest accounts (and their todos) once they expire.
-# Enqueued opportunistically whenever a new guest signs up, and runnable by hand
-# with `bin/rails guests:cleanup`.
+# Removes guest accounts, and their todos, once they expire. Enqueued whenever
+# a new guest signs up, and runnable by hand with `bin/rails guests:cleanup`.
 class CleanupExpiredGuestsJob < ApplicationJob
   queue_as :default
 
