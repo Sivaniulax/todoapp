@@ -1,4 +1,4 @@
-# Offset pagination, no gem needed.
+# Offset pagination through Pagy, keeping the meta shape the client expects.
 #   records, meta = paginate(Todo.all)
 module Pagination
   extend ActiveSupport::Concern
@@ -6,18 +6,22 @@ module Pagination
   DEFAULT_PER_PAGE = 10
   MAX_PER_PAGE = 50
 
+  included do
+    include Pagy::Method
+  end
+
   private
 
   def paginate(scope)
-    per_page = params[:per_page].to_i
-    per_page = DEFAULT_PER_PAGE unless per_page.positive?
-    per_page = [ per_page, MAX_PER_PAGE ].min
-    page = [ params[:page].to_i, 1 ].max
+    # Pagy reads ?page= from the request and returns an empty last page
+    # rather than raising when the client asks past the end.
+    page, records = pagy(:offset, scope, limit: per_page)
 
-    total_count = scope.count
-    total_pages = [ (total_count / per_page.to_f).ceil, 1 ].max
+    [ records, { page: page.page, per_page: page.limit, total_count: page.count, total_pages: page.last } ]
+  end
 
-    records = scope.offset((page - 1) * per_page).limit(per_page)
-    [ records, { page:, per_page:, total_count:, total_pages: } ]
+  def per_page
+    requested = params[:per_page].to_i
+    requested.positive? ? [ requested, MAX_PER_PAGE ].min : DEFAULT_PER_PAGE
   end
 end
