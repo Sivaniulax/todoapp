@@ -6,7 +6,11 @@ class TodoPolicy < ApplicationPolicy
   def destroy? = owner?
   def destroy_completed? = true
 
-  alias_method :toggle?, :update?
+  # A status change is an edit like any other.
+  alias_method :start?, :update?
+  alias_method :complete?, :update?
+  alias_method :reopen?, :update?
+  alias_method :archive?, :update?
   alias_method :trash?, :update?
   alias_method :restore?, :update?
 

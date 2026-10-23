@@ -20,7 +20,7 @@ RSpec.describe TodoPolicy do
   it "treats the status transitions as edits" do
     policy = subject.new(someone_else, todo)
 
-    expect(policy).not_to be_toggle
+    expect(policy).not_to be_complete
     expect(policy).not_to be_trash
     expect(policy).not_to be_restore
   end

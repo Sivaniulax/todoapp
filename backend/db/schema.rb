@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_110001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -200,7 +200,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_110001) do
     t.bigint "category_id"
     t.string "title", null: false
     t.text "description"
-    t.boolean "completed", default: false, null: false
     t.datetime "completed_at"
     t.date "due_date"
     t.integer "priority", default: 1, null: false
@@ -208,8 +207,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_110001) do
     t.datetime "updated_at", null: false
     t.datetime "discarded_at"
     t.integer "lock_version", default: 0, null: false
+    t.string "status", default: "pending", null: false
     t.index ["category_id"], name: "index_todos_on_category_id"
-    t.index ["user_id", "completed"], name: "index_todos_on_user_id_and_completed"
+    t.index ["status"], name: "index_todos_on_status"
     t.index ["user_id", "discarded_at"], name: "index_todos_on_user_id_and_discarded_at"
     t.index ["user_id", "due_date"], name: "index_todos_on_user_id_and_due_date"
     t.index ["user_id"], name: "index_todos_on_user_id"

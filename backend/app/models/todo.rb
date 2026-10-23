@@ -1,4 +1,5 @@
 class Todo < ApplicationRecord
+  include AASM
   include Trashable
   include Taggable
 
@@ -19,21 +20,47 @@ class Todo < ApplicationRecord
 
   before_save :sync_completed_at
 
-  scope :completed, -> { where(completed: true) }
-  scope :pending, -> { where(completed: false) }
-  scope :overdue, -> { pending.where(due_date: ...Date.current) }
-  scope :due_today, -> { pending.where(due_date: Date.current) }
+  # AASM gives us the predicates (completed?), a scope per state, and
+  # may_complete? for asking before trying. Bang events return false on a
+  # transition that is not allowed rather than raising.
+  aasm column: :status, whiny_transitions: false do
+    state :pending, initial: true
+    state :in_progress
+    state :completed
+    state :archived
+
+    event :start do
+      transitions from: %i[pending completed], to: :in_progress
+    end
+
+    event :complete do
+      transitions from: %i[pending in_progress], to: :completed
+    end
+
+    event :reopen do
+      transitions from: %i[in_progress completed archived], to: :pending
+    end
+
+    # Only a finished todo gets filed away.
+    event :archive do
+      transitions from: :completed, to: :archived
+    end
+  end
+
+  scope :outstanding, -> { where(status: %w[pending in_progress]) }
+  scope :overdue, -> { outstanding.where(due_date: ...Date.current) }
+  scope :due_today, -> { outstanding.where(due_date: Date.current) }
   scope :search, ->(term) {
     pattern = "%#{sanitize_sql_like(term)}%"
     where("todos.title ILIKE :pattern OR todos.description ILIKE :pattern", pattern:)
   }
 
-  def overdue?
-    !completed? && due_date.present? && due_date < Date.current
+  def outstanding?
+    pending? || in_progress?
   end
 
-  def toggle_completion!
-    update!(completed: !completed)
+  def overdue?
+    outstanding? && due_date.present? && due_date < Date.current
   end
 
   private
@@ -43,7 +70,7 @@ class Todo < ApplicationRecord
   end
 
   def sync_completed_at
-    return unless will_save_change_to_completed?
+    return unless will_save_change_to_status?
 
     self.completed_at = completed? ? Time.current : nil
   end

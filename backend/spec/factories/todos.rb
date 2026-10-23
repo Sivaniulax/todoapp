@@ -4,8 +4,18 @@ FactoryBot.define do
     sequence(:title) { |n| "Todo #{n}" }
     priority { :medium }
 
+    trait :in_progress do
+      status { "in_progress" }
+    end
+
     trait :completed do
-      completed { true }
+      status { "completed" }
+      completed_at { Time.current }
+    end
+
+    trait :archived do
+      status { "archived" }
+      completed_at { 1.day.ago }
     end
 
     trait :overdue do

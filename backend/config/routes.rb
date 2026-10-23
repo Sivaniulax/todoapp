@@ -25,7 +25,10 @@ Rails.application.routes.draw do
         end
 
         member do
-          patch :toggle
+          patch :start
+          patch :complete
+          patch :reopen
+          patch :archive
           patch :trash
           patch :restore
         end

@@ -21,9 +21,12 @@ if demo.todos.none?
     { title: "Learn ActiveRecord scopes", priority: :high, category: work, due_date: Date.current + 1 },
     { title: "Write request specs", priority: :medium, category: work, due_date: Date.current - 2 },
     { title: "Deploy to Render", priority: :high, category: work },
-    { title: "Buy groceries", priority: :low, category: home, completed: true },
+    { title: "Buy groceries", priority: :low, category: home, status: "completed" },
     { title: "Read about React hooks", description: "useState, useEffect, useReducer, custom hooks" }
   ])
+
+  # One of them is already underway, so the status tabs have something in them.
+  demo.todos.find_by(title: "Deploy to Render")&.start!
 
   # Tags are created on demand through the Taggable concern.
   demo.todos.find_by(title: "Learn ActiveRecord scopes")&.update!(tag_names: %w[learning rails])

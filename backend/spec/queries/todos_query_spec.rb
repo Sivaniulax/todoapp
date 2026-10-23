@@ -30,6 +30,6 @@ RSpec.describe TodosQuery do
 
   it "counts each status for the current filters" do
     expect(described_class.new(user.todos, priority: "high").counts)
-      .to eq(all: 1, pending: 1, completed: 0, overdue: 0)
+      .to eq(all: 1, pending: 1, in_progress: 0, completed: 0, archived: 0, overdue: 0)
   end
 end

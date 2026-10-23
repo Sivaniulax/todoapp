@@ -1,7 +1,12 @@
 class TodoResource
   include Alba::Resource
 
-  attributes :id, :title, :description, :completed, :completed_at, :due_date, :priority
+  attributes :id, :title, :description, :status, :completed_at, :due_date, :priority
+
+  # Which transitions the client may offer right now.
+  attribute :allowed_events do |todo|
+    todo.aasm.events(permitted: true).map { |event| event.name.to_s }
+  end
 
   attribute :overdue do |todo|
     todo.overdue?

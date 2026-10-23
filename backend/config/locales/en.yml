@@ -23,6 +23,7 @@ en:
       not_found: "%{model} not found"
       validation_failed: "Validation failed"
       stale_object: "This todo was changed by someone else. Reload it and try again."
+      invalid_transition: "Cannot %{event} a todo that is %{status}"
       account_not_found: "Account not found"
       guest_session_expired: "Your guest session has expired"
       session_expired: "Your session has expired, please log in again"

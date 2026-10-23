@@ -23,7 +23,8 @@ RSpec.describe "Todos API" do
       get "/api/v1/todos", params: { q: "buy", status: "pending" }
 
       expect(json["todos"].pluck("title")).to eq([ "Buy milk" ])
-      expect(json.dig("meta", "counts")).to eq("all" => 2, "pending" => 1, "completed" => 1, "overdue" => 0)
+      expect(json.dig("meta", "counts"))
+        .to eq("all" => 2, "pending" => 1, "in_progress" => 0, "completed" => 1, "archived" => 0, "overdue" => 0)
     end
 
     it "paginates" do
@@ -75,10 +76,30 @@ RSpec.describe "Todos API" do
       expect(json.dig("todo", "title")).to eq("New")
     end
 
-    it "toggles" do
-      patch "/api/v1/todos/#{todo.id}/toggle", as: :json
-      expect(json.dig("todo", "completed")).to be(true)
+    it "walks the status through its transitions" do
+      patch "/api/v1/todos/#{todo.id}/start", as: :json
+      expect(json.dig("todo", "status")).to eq("in_progress")
+
+      patch "/api/v1/todos/#{todo.id}/complete", as: :json
+      expect(json.dig("todo", "status")).to eq("completed")
       expect(json.dig("todo", "completed_at")).to be_present
+
+      patch "/api/v1/todos/#{todo.id}/archive", as: :json
+      expect(json.dig("todo", "status")).to eq("archived")
+    end
+
+    it "refuses a transition the state machine does not allow" do
+      patch "/api/v1/todos/#{todo.id}/archive", as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json["error"]).to match(/cannot archive/i)
+      expect(todo.reload).to be_pending
+    end
+
+    it "lists the events the client may offer" do
+      patch "/api/v1/todos/#{todo.id}/complete", as: :json
+
+      expect(json.dig("todo", "allowed_events")).to contain_exactly("start", "reopen", "archive")
     end
 
     it "deletes" do

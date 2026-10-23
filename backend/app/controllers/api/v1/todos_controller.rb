@@ -1,7 +1,7 @@
 module Api
   module V1
     class TodosController < ApplicationController
-      before_action :set_todo, only: %i[show update destroy toggle trash restore]
+      before_action :set_todo, only: %i[show update destroy start complete reopen archive trash restore]
 
       # GET /api/v1/todos?status=pending&q=milk&priority=high&category_id=1&tag=work&sort=due_date
       def index
@@ -58,11 +58,12 @@ module Api
         head :no_content
       end
 
-      # PATCH /api/v1/todos/:id/toggle
-      def toggle
-        @todo.toggle_completion!
-        render json: { todo: TodoResource.new(@todo).serializable_hash }
-      end
+      # PATCH /api/v1/todos/:id/start|complete|reopen|archive
+      # One action per AASM event; the model decides whether it is allowed.
+      def start = fire(:start)
+      def complete = fire(:complete)
+      def reopen = fire(:reopen)
+      def archive = fire(:archive)
 
       # PATCH /api/v1/todos/:id/trash   (soft delete)
       def trash
@@ -84,6 +85,16 @@ module Api
       end
 
       private
+
+      # A refused transition is the client's mistake, not a server error.
+      def fire(event)
+        if @todo.public_send(:"#{event}!")
+          render json: { todo: TodoResource.new(@todo).serializable_hash }
+        else
+          render json: { error: I18n.t("api.errors.invalid_transition", event:, status: @todo.status) },
+                 status: :unprocessable_content
+        end
+      end
 
       def scoped_todos
         policy_scope(Todo).kept.includes(:category, :tags)

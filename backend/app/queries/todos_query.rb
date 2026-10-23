@@ -2,7 +2,7 @@
 #
 #   TodosQuery.new(user.todos, status: "pending", q: "milk", sort: "due_date").call
 class TodosQuery
-  STATUSES = %w[all pending completed overdue].freeze
+  STATUSES = %w[all pending in_progress completed archived overdue].freeze
 
   SORTS = {
     "newest" => { created_at: :desc },
@@ -27,7 +27,9 @@ class TodosQuery
     {
       all: base.count,
       pending: base.pending.count,
+      in_progress: base.in_progress.count,
       completed: base.completed.count,
+      archived: base.archived.count,
       overdue: base.overdue.count
     }
   end
@@ -47,9 +49,8 @@ class TodosQuery
 
   def by_status(relation, status)
     case status
-    when "pending" then relation.pending
-    when "completed" then relation.completed
     when "overdue" then relation.overdue
+    when *Todo.aasm.states.map { |state| state.name.to_s } then relation.where(status:)
     else relation
     end
   end

@@ -20,11 +20,11 @@ RSpec.describe Todo do
     expect(todo.errors[:category]).to include("must be one of your categories")
   end
 
-  it "sets and clears completed_at" do
+  it "sets and clears completed_at as the status moves" do
     todo = create(:todo)
-    todo.toggle_completion!
+    todo.complete!
     expect(todo.completed_at).to be_present
-    todo.toggle_completion!
+    todo.reopen!
     expect(todo.completed_at).to be_nil
   end
 
