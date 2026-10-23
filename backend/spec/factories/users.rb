@@ -1,5 +1,7 @@
 FactoryBot.define do
   factory :user do
+    # Each user gets a workspace of their own unless a spec shares one.
+    workspace
     sequence(:name) { |n| "User #{n}" }
     sequence(:email) { |n| "user#{n}@example.com" }
     password { "password123" }

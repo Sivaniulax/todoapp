@@ -4,7 +4,7 @@ class TagPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      user.tags
+      scope.all
     end
   end
 end

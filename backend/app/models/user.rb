@@ -10,6 +10,10 @@ class User < ApplicationRecord
   # an ArgumentError.
   enum :role, { guest: 0, member: 1, admin: 2 }, default: :member, validate: true
 
+  # Autosave so a brand new user can arrive with a workspace that has not
+  # been written yet.
+  belongs_to :workspace, autosave: true
+
   has_many :todos, dependent: :delete_all
   has_many :categories, dependent: :delete_all
   has_many :tags, dependent: :delete_all
@@ -19,6 +23,8 @@ class User < ApplicationRecord
 
   # Devise's :validatable covers email presence, format and uniqueness, and
   # the password length and confirmation.
+  before_validation :ensure_workspace, on: :create
+
   validates :name, presence: true, length: { maximum: 50 }
   validates :guest_expires_at, presence: true, if: :guest?
 
@@ -50,6 +56,12 @@ class User < ApplicationRecord
 
   def can_manage_categories?
     member? || admin?
+  end
+
+  # Everyone lands in a workspace of their own unless they were invited into
+  # one; sharing is a matter of pointing two users at the same workspace.
+  def ensure_workspace
+    self.workspace ||= Workspace.personal_for(name)
   end
 
   def send_welcome_email

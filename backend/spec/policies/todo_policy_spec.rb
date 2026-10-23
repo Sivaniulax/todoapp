@@ -30,13 +30,17 @@ RSpec.describe TodoPolicy do
   end
 
   describe "scope" do
-    it "returns only the user's own todos" do
+    it "covers the whole workspace, not just the signed-in member" do
+      colleague = create(:user, workspace: owner.workspace)
       mine = create(:todo, user: owner)
-      create(:todo, user: someone_else)
+      theirs = create(:todo, user: colleague)
+      create(:todo, user: someone_else) # another workspace entirely
 
-      resolved = described_class::Scope.new(owner, Todo).resolve
+      resolved = ActsAsTenant.with_tenant(owner.workspace) do
+        described_class::Scope.new(owner, Todo).resolve.to_a
+      end
 
-      expect(resolved).to contain_exactly(mine, todo)
+      expect(resolved).to contain_exactly(mine, theirs)
     end
   end
 end

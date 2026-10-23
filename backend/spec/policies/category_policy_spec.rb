@@ -22,10 +22,14 @@ RSpec.describe CategoryPolicy do
     expect(subject.new(member, create(:category))).not_to be_update
   end
 
-  it "scopes to the user" do
+  it "scopes to the workspace" do
     mine = create(:category, user: member)
-    create(:category)
+    create(:category) # another workspace
 
-    expect(described_class::Scope.new(member, Category).resolve).to eq([ mine ])
+    resolved = ActsAsTenant.with_tenant(member.workspace) do
+      described_class::Scope.new(member, Category).resolve.to_a
+    end
+
+    expect(resolved).to eq([ mine ])
   end
 end

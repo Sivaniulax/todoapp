@@ -3,6 +3,8 @@ class Todo < ApplicationRecord
   include Trashable
   include Taggable
 
+  acts_as_tenant :workspace
+
   belongs_to :user, counter_cache: true
   belongs_to :category, optional: true, counter_cache: true
 
@@ -12,6 +14,9 @@ class Todo < ApplicationRecord
 
   # A todo built through Category's nested attributes has no user of its own yet.
   before_validation :inherit_user_from_category
+  # acts_as_tenant fills this in during a request; outside one (jobs, seeds,
+  # the console) take it from whoever owns the todo.
+  before_validation :inherit_workspace
 
   validates :title, presence: true, length: { maximum: 120 }
   validates :description, length: { maximum: 1_000 }
@@ -69,6 +74,10 @@ class Todo < ApplicationRecord
     self.user ||= category&.user
   end
 
+  def inherit_workspace
+    self.workspace ||= user&.workspace || category&.workspace
+  end
+
   def sync_completed_at
     return unless will_save_change_to_status?
 
@@ -76,7 +85,7 @@ class Todo < ApplicationRecord
   end
 
   def category_must_belong_to_user
-    return if category.nil? || category.user_id == user_id
+    return if category.nil? || category.workspace_id == workspace_id
 
     errors.add(:category, :not_your_category)
   end

@@ -1,9 +1,11 @@
 class TodoPolicy < ApplicationPolicy
   def index? = true
-  def show? = true # the scope already hides other people's todos
+  # Everyone in the workspace can read its todos; only the author and an
+  # admin can change one.
+  def show? = true
   def create? = true # the guest limit is a model validation
-  def update? = owner?
-  def destroy? = owner?
+  def update? = owner? || user.admin?
+  def destroy? = owner? || user.admin?
   def destroy_completed? = true
 
   # A status change is an edit like any other.
@@ -14,9 +16,10 @@ class TodoPolicy < ApplicationPolicy
   alias_method :trash?, :update?
   alias_method :restore?, :update?
 
+  # acts_as_tenant has already narrowed this to the current workspace.
   class Scope < ApplicationPolicy::Scope
     def resolve
-      user.todos
+      scope.all
     end
   end
 end

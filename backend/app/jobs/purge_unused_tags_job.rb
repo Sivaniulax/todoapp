@@ -4,7 +4,8 @@ class PurgeUnusedTagsJob < ApplicationJob
   queue_as :default
 
   def perform
-    count = Tag.unused.delete_all
+    # Housekeeping for every workspace at once.
+    count = ActsAsTenant.without_tenant { Tag.unused.delete_all }
     Rails.logger.info("[PurgeUnusedTagsJob] removed #{count} unused tag(s)")
     count
   end

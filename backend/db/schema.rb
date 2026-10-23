@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_090002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -21,8 +21,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
     t.integer "todos_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "workspace_id", null: false
     t.index "user_id, lower((name)::text)", name: "index_categories_on_user_id_and_lower_name", unique: true
     t.index ["user_id"], name: "index_categories_on_user_id"
+    t.index ["workspace_id"], name: "index_categories_on_workspace_id"
   end
 
   create_table "solid_queue_batch_executions", force: :cascade do |t|
@@ -191,8 +193,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
     t.string "name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "workspace_id", null: false
     t.index "user_id, lower((name)::text)", name: "index_tags_on_user_id_and_lower_name", unique: true
     t.index ["user_id"], name: "index_tags_on_user_id"
+    t.index ["workspace_id"], name: "index_tags_on_workspace_id"
   end
 
   create_table "todos", force: :cascade do |t|
@@ -208,11 +212,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
     t.datetime "discarded_at"
     t.integer "lock_version", default: 0, null: false
     t.string "status", default: "pending", null: false
+    t.bigint "workspace_id", null: false
     t.index ["category_id"], name: "index_todos_on_category_id"
     t.index ["status"], name: "index_todos_on_status"
     t.index ["user_id", "discarded_at"], name: "index_todos_on_user_id_and_discarded_at"
     t.index ["user_id", "due_date"], name: "index_todos_on_user_id_and_due_date"
     t.index ["user_id"], name: "index_todos_on_user_id"
+    t.index ["workspace_id"], name: "index_todos_on_workspace_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -224,11 +230,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
     t.integer "todos_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "workspace_id", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["role", "guest_expires_at"], name: "index_users_on_role_and_guest_expires_at"
+    t.index ["workspace_id"], name: "index_users_on_workspace_id"
+  end
+
+  create_table "workspaces", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_workspaces_on_slug", unique: true
   end
 
   add_foreign_key "categories", "users", on_delete: :cascade
+  add_foreign_key "categories", "workspaces"
   add_foreign_key "solid_queue_batch_executions", "solid_queue_batches", column: "batch_id", on_delete: :cascade
   add_foreign_key "solid_queue_batch_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
@@ -239,6 +256,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "taggings", "tags", on_delete: :cascade
   add_foreign_key "tags", "users", on_delete: :cascade
+  add_foreign_key "tags", "workspaces"
   add_foreign_key "todos", "categories", on_delete: :nullify
   add_foreign_key "todos", "users", on_delete: :cascade
+  add_foreign_key "todos", "workspaces"
+  add_foreign_key "users", "workspaces"
 end
