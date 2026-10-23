@@ -1,123 +1,130 @@
 # TodoApp
 
-A full-stack todo app: a Rails 8 API and a React (Vite) frontend, with roles
-(guest / member / admin), JWT auth, tests, CI, and a free-tier deployment on
-Render + Vercel.
+A todo app built to learn Rails past the scaffolding stage: roles and policies,
+multi-tenancy, a state machine, an audit trail, background jobs and mail, with a
+Vue 3 front end on top of a JSON API.
+
+![Rails](https://img.shields.io/badge/Rails-8.1-CC0000?logo=rubyonrails&logoColor=white)
+![Vue](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?logo=postgresql&logoColor=white)
+![Tests](https://img.shields.io/badge/specs-164-success)
 
 ```
 todoapp/
-├── backend/      Rails 8 API (PostgreSQL, JWT, RSpec)
-├── frontend/     React 19 + Vite + React Router
-├── render.yaml   Render Blueprint (API + Postgres)
+├── backend/      Rails 8.1 API (PostgreSQL, Devise, RSpec)
+├── frontend/     Vue 3 + Vite + Pinia + Vue Router
+├── docs/         How the pieces fit together
+├── render.yaml   Render blueprint (API + database)
 └── .github/      GitHub Actions CI
 ```
 
-## Features
+## What it does
 
-- Sign up / log in with email + password (JWT)
-- Guest mode: try the app without an account (24h session, max 10 todos, no categories), then upgrade to a real account and keep the todos
-- Roles: `guest`, `member`, `admin`. Admins get a stats and users dashboard
-- Todos with priority, due date, notes, category; toggle, edit, delete, "clear completed"
-- Filter by status (all / pending / completed / overdue), priority and category, search, sort, paginate
-- Categories with colors (members only)
-- Tags: free-form, created on demand, shared across a user's todos, filterable
-- Trash: deleting a todo is reversible, with its own list and a restore action
-- Bulk add: paste one title per line and they are created all-or-nothing
-- A welcome email on signup, and a daily digest of what is due today
+- **Accounts** with email and password, or a **guest session** you can try
+  without signing up (24 hours, 10 todos) and later upgrade without losing work.
+- **Three roles.** Guests read, members manage their own things, admins get a
+  dashboard and can tidy up anyone's todo.
+- **Workspaces.** Every todo, category and tag belongs to one. Two people in the
+  same workspace share its todos; nothing crosses between workspaces.
+- **Todos** with a status that moves `pending → in progress → done → archived`,
+  plus priority, due date, notes, categories and free-form tags.
+- **Filter** by status, priority, category or tag, search the text, sort, paginate.
+- **Trash** instead of deletion, with restore, and optimistic locking so two
+  people editing the same todo get a conflict rather than a silent overwrite.
+- **Bulk add** from pasted text, one title per line, all or nothing.
+- **History** for every todo: who changed what, and when.
+- **Mail**: a welcome note on signup and a daily digest of what is due.
 
-## How it's put together
+## The stack, and what each gem is doing here
 
-**Backend** is a Rails 8 API, no view layer. Auth is Devise over a session
-cookie: `database_authenticatable` for the password, `validatable` for the
-email and password rules, `timeoutable` for the 24h expiry. Devise's own
-controllers are skipped (`devise_for :users, skip: :all`) because
-`Api::V1::AuthController` answers in JSON, and `concerns/authentication.rb`
-wraps it so controllers still read `require_role :admin`. Controllers stay thin: filtering and
-sorting live in `queries/todos_query.rb`, the guest upgrade in
-`services/accounts/upgrade_guest.rb`, and responses go through plain-Ruby
-serializers so nothing leaks by accident. Errors are raised as `ApiError`
-subclasses and rendered in one place (`concerns/error_handling.rb`).
-Pagination is 20 lines in a concern rather than a gem.
+| Gem | Why it is here |
+|---|---|
+| [devise](https://github.com/heartcombo/devise) | Authentication over a session cookie. `database_authenticatable` for passwords, `validatable` for the email and password rules, `timeoutable` for a 24-hour session. Its controllers are skipped (`devise_for :users, skip: :all`) because the API answers in JSON. |
+| [pundit](https://github.com/varvet/pundit) | Authorization. One policy class per model in `app/policies`, a scope per policy for index actions, and `after_action :verify_authorized` to catch an action that forgot to ask. |
+| [acts_as_tenant](https://github.com/ErwinM/acts_as_tenant) | Multi-tenancy. The workspace is set once per request and added to every query on todos, categories and tags, so a forgotten `where` cannot leak another tenant's rows. |
+| [aasm](https://github.com/aasm/aasm) | The todo status. Four states and only the sensible moves between them, which a boolean column cannot express. |
+| [alba](https://github.com/okuramasafumi/alba) | Serialization. A resource per model in `app/resources`, explicit about which fields leave the API. |
+| [pagy](https://github.com/ddnexus/pagy) | Pagination. Counts, slices and answers an empty last page instead of raising when a client asks for page 99. |
+| [paper_trail](https://github.com/paper-trail-gem/paper_trail) | The audit trail, into `jsonb` columns so the payload stays queryable. |
+| [solid_queue](https://github.com/rails/solid_queue) | Background jobs and the nightly schedule, on PostgreSQL rather than Redis, running inside Puma so the free tier needs one service. |
+| [rack-cors](https://github.com/cyu/rack-cors) | Lets the Vue app call the API from another origin, with credentials so the session cookie travels. |
+| [rspec-rails](https://github.com/rspec/rspec-rails), [factory_bot](https://github.com/thoughtbot/factory_bot_rails), [shoulda-matchers](https://github.com/thoughtbot/shoulda-matchers), [faker](https://github.com/faker-ruby/faker) | Tests: model, request, policy, query, job, mailer and form specs. |
+| [rubocop-rails-omakase](https://github.com/rails/rubocop-rails-omakase), [brakeman](https://github.com/presidentbeef/brakeman), [bullet](https://github.com/flyerhzm/bullet) | Style, a security scan, and a shout in the log when a query goes N+1. |
 
-Soft delete and tagging are model concerns (`Trashable`, `Taggable`), tags
-hang off a polymorphic join table so anything can be tagged later, and the
-hex-colour rule is a reusable `HexColorValidator`. Bulk add is an ActiveModel
-form object that writes the whole batch in one transaction. Concurrent edits
-are caught by optimistic locking, which comes back as a 409. Background jobs
-run on Solid Queue — Postgres-backed, so no Redis — scheduled from
-`config/recurring.yml`, and mail goes through ActionMailer with previews at
-`/rails/mailers`. User-facing strings live in `config/locales/en.yml`, and
-the admin stats are cached rather than recounted on every request.
+On the front end: **Vue 3** with single-file components and the composition API,
+**Pinia** for the auth and todo stores, **Vue Router** with a guard that checks
+the session once, **Vitest** and **@vue/test-utils** for the tests, and
+**oxlint** for linting.
 
-**Frontend** is React 19 on Vite. `AuthProvider` asks `/me` on startup, since
-the session cookie is not readable from JavaScript, and clears the user on any
-401; `useTodos` owns fetching, pagination and the optimistic toggle; filter
-state is a reducer in `utils/filters.js` and the search box is debounced.
-`api/client.js` is the only place that knows the base URL, the `credentials:
-"include"` the cookie needs, and how an error comes back.
+## How a request travels
 
-**Tests**: RSpec (models, requests, query, service, job) with FactoryBot and
-shoulda-matchers; Vitest + Testing Library on the frontend. Both run in CI
-along with RuboCop and Brakeman.
+```
+POST /api/v1/todos
+  │
+  ├─ authenticate!              Devise reads the session cookie
+  ├─ set_current_tenant         the workspace, from the signed-in user
+  ├─ set_paper_trail_whodunnit  so the version knows who did it
+  ├─ authorize Todo, :create?   TodoPolicy
+  ├─ Todo.create!               validations, AASM initial state, tags
+  └─ TodoResource               the JSON that goes back
+```
+
+Errors never leak out raw: `ErrorHandling` turns `RecordNotFound`,
+`RecordInvalid`, `StaleObjectError`, `Pundit::NotAuthorizedError` and the app's
+own `ApiError` subclasses into one JSON shape.
+
+```json
+{ "error": "Validation failed", "details": { "title": ["can't be blank"] } }
+```
 
 ## API
 
-All endpoints are under `/api/v1`. Everything except signup/login/guest needs the session cookie from one of those, so browser clients must send `credentials: "include"`.
+Everything lives under `/api/v1`. Signup, login and guest are open; the rest
+need the session cookie those set, so a browser client sends
+`credentials: "include"`.
 
 | Method | Path | Who |
 |---|---|---|
 | POST | `/auth/signup` `/auth/login` `/auth/guest` | anyone |
-| DELETE | `/auth/logout` | logged in |
+| DELETE | `/auth/logout` | signed in |
 | POST | `/auth/upgrade` | guest |
-| GET | `/me` | logged in |
-| GET/POST | `/todos` | logged in |
-| GET/PATCH/DELETE | `/todos/:id` | owner |
-| PATCH | `/todos/:id/toggle` | owner |
-| PATCH | `/todos/:id/trash`, `/todos/:id/restore` | owner |
-| GET | `/todos/trash` | logged in |
-| POST | `/todos/bulk` | logged in |
-| DELETE | `/todos/clear_completed` | logged in |
-| GET | `/categories` | logged in |
+| GET | `/me` | signed in |
+| GET/POST | `/todos` | workspace |
+| GET | `/todos/trash` | workspace |
+| POST | `/todos/bulk` | workspace |
+| DELETE | `/todos/clear_completed` | workspace |
+| GET/PATCH/DELETE | `/todos/:id` | author or admin to write |
+| GET | `/todos/:id/history` | workspace |
+| PATCH | `/todos/:id/start` `/complete` `/reopen` `/archive` | author or admin |
+| PATCH | `/todos/:id/trash` `/restore` | author or admin |
+| GET | `/categories` `/tags` | signed in |
 | POST/PATCH/DELETE | `/categories(/:id)` | member, admin |
-| GET | `/tags` | logged in |
 | DELETE | `/tags/:id` | member, admin |
-| GET | `/admin/stats`, `/admin/users` | admin |
+| GET | `/admin/stats` `/admin/users` | admin |
 
-`GET /todos` accepts `status`, `q`, `priority`, `category_id`, `tag`, `sort` (`newest`, `oldest`, `due_date`, `priority`), `page`, `per_page`. It returns only
-todos that are not in the trash. `PATCH /todos/:id` accepts a `lock_version`; send the one you read and
-you get a 409 instead of silently overwriting someone else's edit.
+`GET /todos` takes `status` (`pending`, `in_progress`, `completed`, `archived`,
+`overdue`), `q`, `priority`, `category_id`, `tag`, `sort` (`newest`, `oldest`,
+`due_date`, `priority`), `page` and `per_page`.
 
-## Run locally (Windows PowerShell)
+A transition the state machine does not allow answers `422`, so archiving a todo
+that was never finished fails loudly rather than quietly.
 
-Needs Ruby 3.2+, Rails 8, Node 20.19+ and PostgreSQL running locally.
+## Run it locally
 
-**Backend** (terminal 1)
+You need Ruby 3.3+, Node 20.19+ and PostgreSQL. Two terminals.
+
+**API**
 
 ```powershell
 cd backend
 bundle install
-$env:DB_PASSWORD = "your-postgres-password"   # DB_USERNAME defaults to "postgres"
-$env:DB_PORT = "5433"                         # only if Postgres is not on 5432 (PGPORT is also respected)
-ruby bin/rails db:prepare                     # create + migrate + seed
+$env:DB_PASSWORD = "your-postgres-password"   # DB_USERNAME defaults to postgres
+$env:DB_PORT = "5433"                         # only if Postgres is not on 5432
+ruby bin/rails db:prepare                     # create, migrate, seed
 ruby bin/rails server                         # http://localhost:3000
 ```
 
-Seeded demo login: `demo@todoapp.dev` / `password123`.
-To make an admin locally, set `$env:ADMIN_EMAIL` and `$env:ADMIN_PASSWORD` and run `ruby bin/rails db:seed`.
-
-Run tests: `bundle exec rspec` · lint: `bundle exec rubocop` · security: `bundle exec brakeman`
-
-Mail is never delivered in development — read it at <http://localhost:3000/rails/mailers>.
-Jobs run in-process in development (`:async`), because Solid Queue's supervisor needs `fork`,
-which Windows does not have. Production uses Solid Queue inside Puma; on Linux or macOS you can
-also run a dedicated worker with `bin/jobs`. To run a scheduled job by hand:
-`ruby bin/rails runner "DailyDigestJob.perform_now"`.
-
-> On PostgreSQL 18, `db:prepare` can abort with "server closed the connection unexpectedly" when the
-> database does not exist yet. Run `ruby bin/rails db:create` first, then `db:migrate` and `db:seed`.
-> If `localhost` resolves to IPv6 and Postgres only listens on IPv4, set `$env:DB_HOST = "127.0.0.1"`.
-
-**Frontend** (terminal 2)
+**Front end**
 
 ```powershell
 cd frontend
@@ -126,42 +133,52 @@ npm install
 npm run dev                                   # http://localhost:5173
 ```
 
-Tests: `npm test` · lint: `npm run lint` · build: `npm run build`
+Seeded login: `demo@todoapp.dev` / `password123`. For an admin, set
+`$env:ADMIN_EMAIL` and `$env:ADMIN_PASSWORD` and run `ruby bin/rails db:seed`.
+
+| | API | Front end |
+|---|---|---|
+| Tests | `bundle exec rspec` | `npm test` |
+| Lint | `bundle exec rubocop` | `npm run lint` |
+| Security | `bundle exec brakeman` | |
+| Build | | `npm run build` |
+
+> On PostgreSQL 18, `db:prepare` can abort with "server closed the connection
+> unexpectedly" when the database does not exist yet. Run
+> `ruby bin/rails db:create` first, then `db:migrate` and `db:seed`. If
+> `localhost` resolves to IPv6 and Postgres only listens on IPv4, set
+> `$env:DB_HOST = "127.0.0.1"`.
 
 ## Deploy
 
-1. **Push to GitHub**
+1. **Push to GitHub.**
 
    ```powershell
    git remote add origin https://github.com/<you>/todoapp.git
    git push -u origin main
    ```
 
-2. **Backend + database on Render**
-   - Render dashboard → **New → Blueprint** → select the repo. It reads `render.yaml` and creates `todoapp-api` + `todoapp-db`.
-   - Fill in the prompted env vars: `FRONTEND_ORIGINS` (your Vercel URL, which you can set after step 3), and optionally `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
-   - Check `https://<your-api>.onrender.com/up` returns green.
+2. **API and database on Render.** Dashboard → **New → Blueprint** → pick the
+   repo. It reads `render.yaml` and creates `todoapp-api` and `todoapp-db`. Fill
+   in `FRONTEND_ORIGINS`, and `ADMIN_EMAIL` / `ADMIN_PASSWORD` if you want an
+   admin seeded. Check that `/up` comes back green.
 
-3. **Frontend on Vercel**
-   - Vercel → **Add New → Project** → import the repo → set **Root Directory** to `frontend`.
-   - Add env var `VITE_API_URL=https://<your-api>.onrender.com` → Deploy.
-   - Copy the Vercel URL into Render's `FRONTEND_ORIGINS` (comma-separate multiple URLs) and redeploy the API.
+3. **Front end on Vercel.** **Add New → Project** → import the repo → set the
+   root directory to `frontend`, add `VITE_API_URL`, deploy. Put the Vercel URL
+   into Render's `FRONTEND_ORIGINS` and redeploy the API.
 
-Free-tier notes: the Render API sleeps after ~15 min idle (the first request
-then takes 30-60s), and the free Postgres database expires after 30 days
-unless upgraded.
+Free tier: the Render service sleeps after about 15 minutes idle, so the first
+request takes 30-60 seconds, and the free database expires after 30 days.
 
-### Serve the app and the API from one domain
+### Serve both from one domain
 
-This matters more than it looks. Login is a session cookie, so
-`todoapp.vercel.app` calling `todoapp-api.onrender.com` is a third-party
-cookie: Safari blocks those outright and Chrome is phasing them out, so a
-split deployment logs people out immediately. Working around it with
-`SESSION_COOKIE_SAME_SITE=none` also throws away the CSRF protection that
-`SameSite=Lax` is providing - Lax is the reason this app needs no CSRF
-tokens, because the browser never attaches the cookie to a cross-site write.
+Worth doing before you deploy. Login is a session cookie, so
+`todoapp.vercel.app` calling `todoapp-api.onrender.com` is a third-party cookie:
+Safari blocks those and Chrome is phasing them out, so a split deployment logs
+people straight back out. Setting `SESSION_COOKIE_SAME_SITE=none` works around
+it but gives up the CSRF protection that `SameSite=Lax` provides for free.
 
-One origin fixes both. The easiest version is a Vercel rewrite:
+One origin fixes both. A Vercel rewrite is the least work:
 
 ```json
 "rewrites": [
@@ -170,8 +187,12 @@ One origin fixes both. The easiest version is a Vercel rewrite:
 ]
 ```
 
-The API rule has to come first, or the catch-all swallows it.
+The API rule has to come first or the catch-all swallows it. Then drop
+`VITE_API_URL` so the client calls its own origin. Nothing is needed locally:
+`localhost:5173` and `localhost:3000` count as the same site.
 
-Then drop `VITE_API_URL` so the client calls its own origin, and put the
-Vercel URL in `FRONTEND_ORIGINS`. Locally nothing is needed: `localhost:5173`
-and `localhost:3000` count as the same site.
+## More
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) walks through the layers, the
+decisions behind them, and the things that would need doing before this carried
+real traffic.
