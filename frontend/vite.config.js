@@ -1,15 +1,17 @@
-import react from '@vitejs/plugin-react'
+import vue from '@vitejs/plugin-vue'
+import { URL, fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [vue()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   server: {
     port: 5173,
   },
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: './src/test/setup.js',
   },
 })
