@@ -35,7 +35,8 @@ describe('debounce', () => {
     expect(fn).not.toHaveBeenCalled()
 
     vi.advanceTimersByTime(1)
-    expect(fn).toHaveBeenCalledExactlyOnceWith('b')
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenCalledWith('b')
     vi.useRealTimers()
   })
 })
