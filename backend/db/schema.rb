@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_090002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_090001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -234,6 +234,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090002) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["role", "guest_expires_at"], name: "index_users_on_role_and_guest_expires_at"
     t.index ["workspace_id"], name: "index_users_on_workspace_id"
+  end
+
+  create_table "versions", force: :cascade do |t|
+    t.string "item_type", null: false
+    t.bigint "item_id", null: false
+    t.string "event", null: false
+    t.bigint "whodunnit"
+    t.jsonb "object"
+    t.jsonb "object_changes"
+    t.datetime "created_at", null: false
+    t.index ["item_type", "item_id", "created_at"], name: "index_versions_on_item_type_and_item_id_and_created_at"
+    t.index ["whodunnit"], name: "index_versions_on_whodunnit"
   end
 
   create_table "workspaces", force: :cascade do |t|

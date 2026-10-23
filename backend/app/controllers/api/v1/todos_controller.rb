@@ -1,7 +1,8 @@
 module Api
   module V1
     class TodosController < ApplicationController
-      before_action :set_todo, only: %i[show update destroy start complete reopen archive trash restore]
+      before_action :set_todo,
+                    only: %i[show update destroy history start complete reopen archive trash restore]
 
       # GET /api/v1/todos?status=pending&q=milk&priority=high&category_id=1&tag=work&sort=due_date
       def index
@@ -50,6 +51,12 @@ module Api
       def update
         @todo.update!(todo_params)
         render json: { todo: TodoResource.new(@todo).serializable_hash }
+      end
+
+      # GET /api/v1/todos/:id/history
+      def history
+        versions = @todo.versions.reorder(created_at: :desc).limit(50)
+        render json: { versions: VersionResource.new(versions).serializable_hash }
       end
 
       # DELETE /api/v1/todos/:id   (permanent - use /trash to keep it recoverable)

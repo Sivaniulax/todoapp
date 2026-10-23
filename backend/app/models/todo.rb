@@ -5,6 +5,10 @@ class Todo < ApplicationRecord
 
   acts_as_tenant :workspace
 
+  # Keep an audit trail. lock_version and updated_at move on every save and
+  # say nothing, so they are left out.
+  has_paper_trail ignore: %i[lock_version updated_at]
+
   belongs_to :user, counter_cache: true
   belongs_to :category, optional: true, counter_cache: true
 

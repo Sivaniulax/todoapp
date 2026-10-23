@@ -7,6 +7,7 @@ class TodoPolicy < ApplicationPolicy
   def update? = owner? || user.admin?
   def destroy? = owner? || user.admin?
   def destroy_completed? = true
+  def history? = show?
 
   # A status change is an edit like any other.
   alias_method :start?, :update?
