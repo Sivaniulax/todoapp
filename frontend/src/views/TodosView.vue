@@ -66,7 +66,7 @@ async function addMany() {
         <button type="submit" class="btn btn-ink" :disabled="!bulkText.trim()">Add them all</button>
       </form>
 
-      <TodoForm v-else :categories="categories.items" @submit="add" />
+      <TodoForm v-else :save="add" :categories="categories.items" />
 
       <p v-if="atGuestLimit" class="muted">
         That is the guest limit. <RouterLink to="/account">Create an account</RouterLink> for more.
@@ -92,10 +92,10 @@ async function addMany() {
         <li v-if="editing?.id === todo.id" class="todo">
           <TodoForm
             :todo="todo"
+            :save="saveEdit"
             :categories="categories.items"
             submit-label="Save changes"
             can-cancel
-            @submit="saveEdit"
             @cancel="editing = null"
           />
         </li>

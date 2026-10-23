@@ -22,4 +22,12 @@ Rails.application.configure do
   config.action_mailer.delivery_method = :test
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
   config.action_mailer.preview_paths = [ Rails.root.join("spec/mailers/previews").to_s ]
+
+  # Bullet complains about N+1 queries in the log. There is no browser here
+  # to put a footer in.
+  config.after_initialize do
+    Bullet.enable = true
+    Bullet.rails_logger = true
+    Bullet.raise = false
+  end
 end

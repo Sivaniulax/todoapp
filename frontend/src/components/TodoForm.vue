@@ -4,13 +4,16 @@ import ErrorMessage from '@/components/ErrorMessage.vue'
 import { PRIORITIES } from '@/utils/format'
 
 const props = defineProps({
+  // A function rather than an event: emit cannot be awaited, and this form
+  // needs to know whether the save succeeded.
+  save: { type: Function, required: true },
   todo: { type: Object, default: null },
   categories: { type: Array, default: () => [] },
   submitLabel: { type: String, default: 'Add todo' },
   canCancel: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['submit', 'cancel'])
+const emit = defineEmits(['cancel'])
 
 const form = reactive({
   title: props.todo?.title ?? '',
@@ -34,7 +37,7 @@ async function submit() {
   saving.value = true
   error.value = ''
   try {
-    await emit('submit', {
+    await props.save({
       ...form,
       title: form.title.trim(),
       due_date: form.due_date || null,
